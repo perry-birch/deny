@@ -1,6 +1,9 @@
 library deny_test;
 
+import 'dart:uri';
+
 import 'package:unittest/unittest.dart';
+import 'package:deny/deny.dart';
 
 // Unit tests
 part 'src/oauth2_credentials_test.dart';

@@ -2,12 +2,12 @@ library expiration_exception;
 
 import 'dart:io';
 
-import 'oauth_credentials.dart';
+import 'oauth2_credentials.dart';
 
 /// An exception raised when attempting to use expired OAuth2 credentials.
 class ExpirationException implements Exception {
   /// The expired credentials.
-  final OAuthCredentials credentials;
+  final OAuth2Credentials credentials;
 
   /// Creates an ExpirationException.
   ExpirationException(this.credentials);

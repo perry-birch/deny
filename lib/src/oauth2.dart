@@ -126,7 +126,7 @@ class OAuth2 {
     return data;
   }
 
-  Future<OAuthCredentials> handleResponse(http.Client client, HttpRequest request) {
+  Future<OAuth2Credentials> handleResponse(http.Client client, HttpRequest request) {
     var params = request.queryParameters;
     // Throws if an error is found
     _checkForResponseError(params);
@@ -181,7 +181,7 @@ class OAuth2 {
         }
       }
 
-      return OAuthCredentials.using(
+      return OAuth2Credentials.using(
           accessToken,
           refreshToken,
           this._tokenEndpoint,

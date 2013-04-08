@@ -15,7 +15,7 @@ import 'dart:uri';
 ///
 /// Note that a given set of credentials can only be refreshed once, so be sure
 /// to save the refreshed credentials for future use.
-class OAuthCredentials {
+class OAuth2Credentials {
 /// The token that is sent to the resource server to prove the authorization
   /// of a client.
   final String accessToken;
@@ -47,7 +47,7 @@ class OAuthCredentials {
   /// Whether it's possible to refresh these credentials.
   bool get canRefresh => refreshToken != null && tokenEndpoint != null;
 
-  const OAuthCredentials._(
+  const OAuth2Credentials._(
       this.accessToken,
       [this.refreshToken,
       this.tokenEndpoint,
@@ -72,7 +72,7 @@ class OAuthCredentials {
        Uri tokenEndpoint,
        List<String> scopes,
        DateTime expiration]) {
-    return new OAuthCredentials._(
+    return new OAuth2Credentials._(
         accessToken,
         refreshToken,
         tokenEndpoint,
