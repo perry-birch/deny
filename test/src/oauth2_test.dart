@@ -10,7 +10,7 @@ var accessType = 'online';
 var approvalPrompt = 'force';
 
 dynamic getAuth() {
-  var deny_localhost8080 = Instagram.using(
+  var deny_localhost8080 = Instagram.authorizeUsing(
       identifier,
       secret,
       redirectUrl,

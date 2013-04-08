@@ -5,7 +5,7 @@ description: A suite of authentication related utilities.
 homepage: https://github.com/Vizidrix/deny
 documentation: https://github.com/Vizidrix/dfunct/tree/master/doc
 dependencies:
-  http: any
+  http: '>=0.4.3 <5.0.0'
 dev_dependencies:
   unittest: '>=0.4.1'
 
