@@ -1,0 +1,14 @@
+name: deny
+version: 0.0.1
+author: Vizidrix <admin@vizidrix.com>
+description: A suite of authentication related utilities.
+homepage: https://github.com/Vizidrix/deny
+documentation: https://github.com/Vizidrix/dfunct/tree/master/doc
+dependencies:
+  http: any
+dev_dependencies:
+  unittest: '>=0.4.1'
+
+#dependencies:
+#  js: any
+#  unittest: any
