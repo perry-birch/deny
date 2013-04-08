@@ -1,58 +1,112 @@
+# Deny: Getting Started Doc
 
-* Get an account and register an application
-* http://instagram.com/developer/
+----
 
-	var auth = Instagram.authorizeUsing(
-        '0993c79435a74c36b7cb6ba9e10a37a6', // CLIENT_ID
-        '959e56f63e304faaa3179fe60f6c74ed', // CLIENT_SECRET
-        new Uri('http://yourawesomesite.heroku.com/oauth2'),
-        ['your', 'scopes']
-        );
-        
-	redirectOAuth(HttpRequest request) {
-	  var state = '2104';
-	  var authUrl = auth.getAuthorizationUrl(state);
-	  var response = request.response;
-	  response
-	    ..statusCode = HttpStatus.OK
-	    ..headers.set(HttpHeaders.CONTENT_TYPE, 'text/html')
-	    ..write(
-	      '<!DOCTYPE html>'
-	      '<meta http-equiv="Refresh" content="0; url=\'${authUrl}\'">'
-	      'Redirecting to Instagram login...'
-	    )
-	    ..close();
-	}
-	
-	oauth2(HttpRequest request) {
-	  var client = new http.Client();
-	  var handler = auth.handleTokenResponse(client, request.queryParameters);
-	  handler.then((credentials) {
-	    var response = request.response;
-	    response
-	    ..headers.set(HttpHeaders.CONTENT_TYPE, 'application/json')
-	    ..write(credentials.toJson());
-	    var instagram = Instagram.using(client, credentials);
-	    var futures = [
-	      instagram.getCurrentUser().then((userData) {
-	        response
-	        ..write('\r\n\r\n')
-	        ..write(JSON.stringify(userData));
-	      }),
-	      instagram.getCurrentUserFeed(count: 3).then((userFeed) {
-	        response
-	        ..write('\r\n\r\n')
-	        ..write(userFeed);
-	      }),
-	      instagram.getSearch('kavan').then((results) {
-	        response
-	        ..write('\r\n\r\n')
-	        ..write(results);
-	      }),
-	    ];
-	    Future.wait(futures).then((_) {
-	      response
-	      ..close();
-	    });
-	  });
-	}
+> Denial is the first step on the road to recovery... at least when you're talking about security.
+
+  - Gotta have [Dart]: http://dartlang.org
+  - You'll need an OAuth2 playground - [Instagram]: http://instagram.com/developer/
+  - And maybe a place to run stuff - [Drone.io]: http://drone.io
+  - Then you'll want to host it somewhere - [Heroku]: http://heroku.com 
+
+----
+
+Getting started is really easy *(I sincerly hope!)*:
+
+>Grab something to help you with the auth:
+
+    var auth = Instagram.authorizeUsing(
+      '0993c79435a74c36b7cb6ba9e10a37a6', // CLIENT_ID
+      '959e56f63e304faaa3179fe60f6c74ed', // CLIENT_SECRET
+      new Uri('http://yourawesomesite.heroku.com/oauth2'),
+      ['your', 'scopes']
+    );
+
+>Got some state? Add that.  Then send the user to the getAuthorizationUrl somehow...
+
+    redirectOAuth2(HttpRequest request) { 
+      var state = '2104'; // <-- *any string you want!*
+      var authUrl = auth.getAuthorizationUrl(state);
+      var response = request.response;
+      response
+      ..statusCode = HttpStatus.OK
+      ..headers.set(HttpHeaders.CONTENT_TYPE, 'text/html')
+      ..write(
+        '<!DOCTYPE html>'
+        ''
+        'Redirecting to Instagram login...'
+      )
+      ..close();
+    }
+
+>Make sure there is someone listening when the auth service calls back
+
+    oauth2(HttpRequest request) {
+      var client = new http.Client();
+      var handler = auth.handleTokenResponse(client, request.queryParameters);
+      handler.then((credentials) { 
+        var response = request.response; 
+        response
+        ..headers.set(HttpHeaders.CONTENT_TYPE, 'application/json')
+        ..write(credentials.toJson()); // <-- dump a buch of text to the user, just for fun!
+
+>Grab an API proxy to make your life oh so much easier
+
+        var instagram = Instagram.using(client, credentials);
+
+>Then, start casting about for some intersting JSON!
+
+        var futures = [ 
+          instagram.getCurrentUser().then((userData) {
+            response
+            ..write('\r\n\r\n')
+            ..write(JSON.stringify(userData));
+          }),
+          instagram.getCurrentUserFeed(count: 3).then((userFeed) {
+            response
+            ..write('\r\n\r\n')
+            ..write(userFeed);
+          }),
+          instagram.getSearch('luigi').then((results) {
+            response
+            ..write('\r\n\r\n')
+            ..write(results);
+          }),
+        ];
+        Future.wait(futures).then((_) {
+          response ..close();
+        });
+      });
+    }
+
+----
+
+Version
+----
+
+0.0.8 ish
+
+Tech
+----
+
+* [Dart] - Dartlang.org: get the JS out!
+* [Deny] - OAuth2 Library for Dart
+
+Installation
+----
+
+[Deny]: http://pub.dartlang.org/packages/deny
+
+License
+----
+
+https://github.com/Vizidrix/deny/blob/master/LICENSE
+
+----
+## Edited
+* 04-April-2013 initial release
+
+----
+## Credits
+* [Vizidrix](https://github.com/organizations/Vizidrix)
+* [Perry Birch](https://github.com/PerryBirch)
