@@ -1,9 +1,9 @@
 name: deny
-version: 0.0.7
+version: 0.0.8
 author: Vizidrix <admin@vizidrix.com>
 description: A suite of authentication related utilities.
 homepage: https://github.com/Vizidrix/deny
-documentation: https://github.com/Vizidrix/dfunct/tree/master/doc
+documentation: https://github.com/Vizidrix/deny/tree/master/doc
 dependencies:
   http: '>=0.4.3 <5.0.0'
 dev_dependencies:
