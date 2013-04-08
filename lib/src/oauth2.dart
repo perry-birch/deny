@@ -2,13 +2,21 @@ library oauth2;
 
 import 'dart:async';
 import 'dart:io';
+import 'dart:json' as JSON;
 import 'dart:uri';
+
+import 'package:http/http.dart' as http;
 
 import 'authorization_exception.dart';
 import 'oauth2_credentials.dart';
 import 'query_string.dart';
 
 class OAuth2 {
+  /// The amount of time, in seconds, to add as a "grace period" for credential
+  /// expiration. This allows credential expiration checks to remain valid for a
+  /// reasonable amount of time.
+  static const _EXPIRATION_GRACE = 10;
+
   /// The client identifier for this client. The authorization server will issue
   /// each client a separate client identifier and secret, which allows the
   /// server to tell which client is accessing it. Some servers may also have an
@@ -104,28 +112,98 @@ class OAuth2 {
     });
   }
 
-  Future<OAuthCredentials> handleResponse(HttpRequest request) {
+  Map<String, String> getTokenRequestData(String authorizationCode) {
+    var data = {
+      "grant_type": "authorization_code",
+      "code": authorizationCode,
+      "redirect_uri": this._redirectEndpoint.toString(),
+      // TODO(nweiz): the spec recommends that HTTP basic auth be used in
+      // preference to form parameters, but Google doesn't support that. Should
+      // it be configurable?
+      "client_id": this._identifier,
+      "client_secret": this._secret
+    };
+    return data;
+  }
+
+  Future<OAuthCredentials> handleResponse(http.Client client, HttpRequest request) {
     var params = request.queryParameters;
     // Throws if an error is found
     _checkForResponseError(params);
-    if(!params.containsKey('code')) {
-      throw new FormatException('Invalid OAuth response for '
-          '"${this._authorizationEndpoint}": did not contain required parameter '
-      '"code".');
-    }
-    //_authCodeGrant.getAuthorizationUrl(_redirectEndpoint, scopes: _scopes);
-    /*_authCodeGrant.handleAuthorizationResponse(request.queryParameters)
-      .then((client) {
-          return client.credentials;
-          //return client;
-        });*/
-    /*var credentials = OAuth.handleAccessTokenResponse(
-        response,
-        _tokenEndpoint,
-        new DateTime.now(),
-        _scopes);
+    _checkForRequiredParams(params, ['code']);
+    var code = params['code'];
+    var data = getTokenRequestData(code);
+    // Timestamp for the initial token request
+    var startTime = new DateTime.now();
+    client.post(this._tokenEndpoint, fields: data)
+    .then((response) {
+      // Anything other than a 200 response is invalid and will throw
+      _handlePostErrorResponse(response);
+      // Extract the json data from the response
+      var parameters = _parseJsonResponse(response);
 
-    return credentials;*/
+      // token_type parameter isn't implemented in some major auth providers
+      // (instagram for one)
+      //var requiredParams = ['access_token', 'token_type'];
+      var requiredParams = ['access_token'];
+      for(var param in requiredParams) {
+        if(!parameters.containsKey(param) || !(parameters[param] is String)) {
+          throw new FormatException('OAuth2 token response [${param}] is missing or invalid');
+        }
+      }
+      var accessToken = parameters['access_token'];
+
+      // TODO(nweiz): support the "mac" token type
+      // (http://tools.ietf.org/html/draft-ietf-oauth-v2-http-mac-01)
+      var supportedTokenTypes = ['bearer'];
+      if(!parameters.contains('token_type')) { parameters['token_type'] = 'bearer'; }
+      if(!supportedTokenTypes.contains(parameters['token_type'])) {
+        throw new FormatException('OAuth2 token type ${parameters['token_type']} is not supported');
+      }
+      var tokenType = parameters['token_type'];
+
+      var refreshToken = null;
+      if(parameters.contains('refresh_token')) {
+        refreshToken = parameters['refresh_token'].toString();
+      }
+      var scopes = null;
+      if(parameters.contains('scope')) {
+        scopes = parameters['scope'].split(' ');
+      }
+
+      // Figure out the expiration time (if applicable)
+      DateTime expiration = null;
+      if(parameters.contains('expires_in')) {
+        var expiresIn = parameters['expires_in'];
+        if(expiresIn is int) {
+          var duration = new Duration(seconds: expiresIn - _EXPIRATION_GRACE);
+          expiration = startTime.add(duration);
+        }
+      }
+
+      return OAuthCredentials.using(
+          accessToken,
+          refreshToken,
+          this._tokenEndpoint,
+          scopes,
+          expiration);
+    });
+  }
+
+  dynamic _parseJsonResponse(http.Response response) {
+    var contentType = response.headers['content-type'];
+    if(contentType == null || contentType != 'application/json') {
+      throw new FormatException('OAuth2 response must be in json');
+    }
+
+    var parameters;
+    try {
+      parameters = JSON.parse(response.body);
+    } catch (e) {
+      // TODO(nweiz): narrow this catch clause once issue 6775 is fixed.
+      throw new FormatException('OAuth2 response must be valid json');
+    }
+    return parameters;
   }
 
   void _checkForResponseError(Map<String, String> params) {
@@ -139,14 +217,54 @@ class OAuth2 {
   }
 
   void _checkForRequiredParams(Map<String, String> params, List<String> required) {
-    if(union(required, params.keys).length != required.length) {
-      throw new FormatException('Invalid OAuth response for '
-          '"${this._authorizationEndpoint}": did not contain required parameter '
-      '"code".');
-    }
+    var missing = exclude(required, params.keys);
+    if(missing.length == 0) { return; }
+
+    throw new FormatException('Invalid OAuth response for '
+        '"${this._authorizationEndpoint}": did not contain required parameter(s) '
+    '[${missing.join(' - ')}');
   }
 
-  Iterable union(Iterable left, Iterable right) {
+  /// Throws the appropriate exception for an error response from the
+  /// authorization server.
+  void _handlePostErrorResponse(http.Response response) {
+    if(response.statusCode == 200) { return; }
+
+    // OAuth2 mandates a 400 or 401 response code for access token error
+    // responses. If it's not a 400 reponse, the server is either broken or
+    // off-spec.
+    if (response.statusCode != 400 && response.statusCode != 401) {
+      var reason = '';
+      if (response.reasonPhrase != null && !response.reasonPhrase.isEmpty) {
+        ' ${response.reasonPhrase}';
+      }
+      throw new FormatException('OAuth request for "${this._tokenEndpoint}" failed '
+          'with status ${response.statusCode}${reason}.\n\n${response.body}');
+    }
+
+    var parameters = _parseJsonResponse(response);
+
+    var requiredParams = ['error', 'error_description', 'error_uri'];
+    for(var param in requiredParams) {
+      if(!parameters.containsKey(param) || !(parameters[param] is String)) {
+        throw new FormatException('OAuth2 error response [${param}] is missing or invalid');
+      }
+    }
+
+    var error = parameters['error'];
+    var error_description = parameters['error_description'];
+    var error_uri = parameters['error_uri'];
+    var uri = error_uri == null ? null : Uri.parse(error_uri);
+
+    throw new AuthorizationException(error, error_description, uri);
+  }
+
+  Iterable exclude(Iterable target, Iterable other) {
+    return target.where((t) => !other.contains(t));
+  }
+
+  Iterable intersection(Iterable left, Iterable right) {
     return left.map((l) => right.contains(l));
+
   }
 }
