@@ -135,59 +135,60 @@ class OAuth2 {
     var data = getTokenRequestData(code);
     // Timestamp for the initial token request
     var startTime = new DateTime.now();
-    client.post(this._tokenEndpoint, fields: data)
-    .then((response) {
-      // Anything other than a 200 response is invalid and will throw
-      _handlePostErrorResponse(response);
-      // Extract the json data from the response
-      var parameters = _parseJsonResponse(response);
+    // Trigger post to auth server to get token
+    return client.post(this._tokenEndpoint, fields: data)
+      .then((response) {
+        // Anything other than a 200 response is invalid and will throw
+        _handlePostErrorResponse(response);
+        // Extract the json data from the response
+        var parameters = _parseJsonResponse(response);
 
-      // token_type parameter isn't implemented in some major auth providers
-      // (instagram for one)
-      //var requiredParams = ['access_token', 'token_type'];
-      var requiredParams = ['access_token'];
-      for(var param in requiredParams) {
-        if(!parameters.containsKey(param) || !(parameters[param] is String)) {
-          throw new FormatException('OAuth2 token response [${param}] is missing or invalid');
+        // token_type parameter isn't implemented in some major auth providers
+        // (instagram for one)
+        //var requiredParams = ['access_token', 'token_type'];
+        var requiredParams = ['access_token'];
+        for(var param in requiredParams) {
+          if(!parameters.containsKey(param) || !(parameters[param] is String)) {
+            throw new FormatException('OAuth2 token response [${param}] is missing or invalid');
+          }
         }
-      }
-      var accessToken = parameters['access_token'];
+        var accessToken = parameters['access_token'];
 
-      // TODO(nweiz): support the "mac" token type
-      // (http://tools.ietf.org/html/draft-ietf-oauth-v2-http-mac-01)
-      var supportedTokenTypes = ['bearer'];
-      if(!parameters.contains('token_type')) { parameters['token_type'] = 'bearer'; }
-      if(!supportedTokenTypes.contains(parameters['token_type'])) {
-        throw new FormatException('OAuth2 token type ${parameters['token_type']} is not supported');
-      }
-      var tokenType = parameters['token_type'];
-
-      var refreshToken = null;
-      if(parameters.contains('refresh_token')) {
-        refreshToken = parameters['refresh_token'].toString();
-      }
-      var scopes = null;
-      if(parameters.contains('scope')) {
-        scopes = parameters['scope'].split(' ');
-      }
-
-      // Figure out the expiration time (if applicable)
-      DateTime expiration = null;
-      if(parameters.contains('expires_in')) {
-        var expiresIn = parameters['expires_in'];
-        if(expiresIn is int) {
-          var duration = new Duration(seconds: expiresIn - _EXPIRATION_GRACE);
-          expiration = startTime.add(duration);
+        // TODO(nweiz): support the "mac" token type
+        // (http://tools.ietf.org/html/draft-ietf-oauth-v2-http-mac-01)
+        var supportedTokenTypes = ['bearer'];
+        if(!parameters.contains('token_type')) { parameters['token_type'] = 'bearer'; }
+        if(!supportedTokenTypes.contains(parameters['token_type'])) {
+          throw new FormatException('OAuth2 token type ${parameters['token_type']} is not supported');
         }
-      }
+        var tokenType = parameters['token_type'];
 
-      return OAuth2Credentials.using(
-          accessToken,
-          refreshToken,
-          this._tokenEndpoint,
-          scopes,
-          expiration);
-    });
+        var refreshToken = null;
+        if(parameters.contains('refresh_token')) {
+          refreshToken = parameters['refresh_token'].toString();
+        }
+        var scopes = null;
+        if(parameters.contains('scope')) {
+          scopes = parameters['scope'].split(' ');
+        }
+
+        // Figure out the expiration time (if applicable)
+        DateTime expiration = null;
+        if(parameters.contains('expires_in')) {
+          var expiresIn = parameters['expires_in'];
+          if(expiresIn is int) {
+            var duration = new Duration(seconds: expiresIn - _EXPIRATION_GRACE);
+            expiration = startTime.add(duration);
+          }
+        }
+
+        return OAuth2Credentials.using(
+            accessToken,
+            refreshToken,
+            this._tokenEndpoint,
+            scopes,
+            expiration);
+      });
   }
 
   dynamic _parseJsonResponse(http.Response response) {
