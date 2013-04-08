@@ -1,7 +1,7 @@
 library deny;
 
 import 'src/authorization_exception.dart';
-import 'src/expireation_exception.dart';
+import 'src/expiration_exception.dart';
 import 'src/instagram.dart';
 import 'src/oauth2.dart';
 import 'src/oauth_credentials.dart';
