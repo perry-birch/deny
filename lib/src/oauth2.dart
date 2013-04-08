@@ -51,6 +51,19 @@ class OAuth2 {
   final Uri _redirectEndpoint;
   /// The scopes that the client is requesting access to.
   final List<String> _scopes;
+  /// ndicates if your application needs to access a Google API when the
+  /// user is not present at the browser. This parameter defaults to online.
+  /// If your application needs to refresh access tokens when the user is not
+  /// present at the browser, then use offline. This will result in your
+  /// application obtaining a refresh token the first time your application
+  /// exchanges an authorization code for a user.
+  final String _accessType;// [ online | offline ]
+  /// Indicates if the user should be re-prompted for consent. The default
+  /// is auto, so a given user should only see the consent page for a given
+  /// set of scopes the first time through the sequence. If the value is
+  /// force, then the user sees a consent page even if they have previously
+  /// given consent to your application for a given set of scopes.
+  final String _approvalPrompt;// [ force | auto ]
 
   const OAuth2._(
       this._identifier,
@@ -58,7 +71,9 @@ class OAuth2 {
       this._authorizationEndpoint,
       this._tokenEndpoint,
       this._redirectEndpoint,
-      this._scopes);
+      this._scopes,
+      this._accessType,
+      this._approvalPrompt);
 
   static final dynamic from = (
     String identifier,
@@ -66,20 +81,49 @@ class OAuth2 {
     Uri authorizationEndpoint,
     Uri tokenEndpoint,
     Uri redirectEndpoint,
-    List<String> scopes
+    List<String> scopes,
+    {
+      String accessType: 'online',
+      String approvalPrompt: 'force'
+    }
     ) {
+    if(accessType == null) { accessType = 'online'; }
     return new OAuth2._(
         identifier,
         secret,
         authorizationEndpoint,
         tokenEndpoint,
         redirectEndpoint,
-        scopes);
+        scopes,
+        accessType,
+        approvalPrompt);
   };
 
-  // try to lookup existing credentials
-  // if found then return new OAuth.Client(identifier, secret, credentials)
-  // otherwise get the grant
+  static final dynamic attachCredentials = (http.BaseRequest request, OAuth2Credentials credentials) {
+    request.headers['authorization'] = 'Bearer ${credentials.accessToken}';
+  };
+
+  static final dynamic validate = (http.BaseResponse response) {
+    if(response.statusCode != 401 ||
+        !response.headers.containsKey('www-authenticate')) {
+      return response;
+    }
+    var authenticate;
+    try {
+      authenticate = new AuthenticateHeader.parse(
+          response.headers['www-authenticate']);
+    } on FormatException catch (e) {
+      return response;
+    }
+
+    if (authenticate.scheme != 'bearer') return response;
+
+    var params = authenticate.parameters;
+    if (!params.containsKey('error')) return response;
+
+    throw new AuthorizationException(
+        params['error'], params['error_description'], params['error_uri']);
+  };
 
   /// Returns the URL to which the resource owner should be redirected to
   /// authorize this client. The resource owner will then be redirected to
@@ -103,8 +147,8 @@ class OAuth2 {
     if(state == null) { state = ''; } // Make sure null wasn't passed
     // Add the following parameters to the auth endpoint uri
     return QueryString.appendAndResolve(this._authorizationEndpoint, {
-      'access_type': 'online', // [ online | offline ]
-      'approval_prompt': 'auto', // [ force | auto ]
+      'access_type': this._accessType,
+      'approval_prompt': this._approvalPrompt,
       'response_type': 'code',
       'client_id': this._identifier,
       'redirect_uri': this._redirectEndpoint.toString(),
@@ -127,34 +171,85 @@ class OAuth2 {
     return data;
   }
 
-  Future<OAuth2Credentials> handleResponse(http.Client client, HttpRequest request) {
-    var params = request.queryParameters;
+  Map<String, String> getTokenRefreshData(String refreshToken, [List<String> scopes = []]) {
+    var data = {
+      "grant_type": "authorization_code",
+      "refresh_token": refreshToken,
+      "redirect_uri": this._redirectEndpoint.toString(),
+      // TODO(nweiz): the spec recommends that HTTP basic auth be used in
+      // preference to form parameters, but Google doesn't support that. Should
+      // it be configurable?
+      "client_id": this._identifier,
+      "client_secret": this._secret,
+      "scope": scopes.join(' ')
+    };
+    return data;
+  }
+
+  Future<OAuth2Credentials> handleTokenResponse(http.Client client, Map<String, String> queryParameters) {
+    var params = queryParameters;
     // Throws if an error is found
     _checkForResponseError(params);
     _checkForRequiredParams(params, ['code']);
     var code = params['code'];
     var data = getTokenRequestData(code);
+    var state = params['state'];
     // Timestamp for the initial token request
     var requestTimeStamp = new DateTime.now();
     // Trigger post to auth server to get token
-    return client.post(this._tokenEndpoint, fields: data)
-      .then((response) {
-        // Anything other than a 200 response is invalid and will throw
-        _handlePostErrorResponse(
-            response.statusCode,
-            response.reasonPhrase,
-            response.headers,
-            response.body);
-        // Extract the json data from the response
-        var parameters = _parseJsonResponse(
-            response.headers,
-            response.body);
-
-        return _extractCredentials(requestTimeStamp, parameters);
-      });
+    return _postToTokenEndpoint(client, requestTimeStamp, data, state);
   }
 
-  OAuth2Credentials _extractCredentials(DateTime requestTimeStamp, LinkedHashMap<String, dynamic> parameters) {
+  /// Explicitly refreshes this client's credentials. Returns this client.
+  ///
+  /// This will throw a [StateError] if the [Credentials] can't be refreshed, an
+  /// [AuthorizationException] if refreshing the credentials fails, or a
+  /// [FormatError] if the authorization server returns invalid responses.
+  ///
+  /// You may request different scopes than the default by passing in
+  /// [newScopes]. These must be a subset of the scopes in the
+  /// [Credentials.scopes] field of [Client.credentials].
+  Future<OAuth2Credentials> refreshCredentials(
+      http.Client client,
+      OAuth2Credentials credentials,
+      [List<String> newScopes]) {
+    if(client == null) { throw new Exception('Invalid web client'); }
+    return async.then((_) {
+      // Make sure we're able to refresh
+      if(!credentials.canRefresh) {
+        var prefix = "OAuth credentials";
+        if (credentials.isExpired) prefix = "$prefix have expired and";
+        throw new StateError("$prefix can't be refreshed.");
+      }
+      var scopes = newScopes != null ? newScopes : this._scopes;
+      var data = getTokenRefreshData(credentials.refreshToken, scopes);
+      // Timestamp for the initial token request
+      var requestTimeStamp = new DateTime.now();
+      // Send refresh request
+      return _postToTokenEndpoint(client, requestTimeStamp, data); // No state on refresh
+    });
+  }
+
+  Future<OAuth2Credentials> _postToTokenEndpoint(http.Client client, DateTime requestTimeStamp, dynamic data, [dynamic state]) {
+    return client.post(this._tokenEndpoint, fields: data)
+        .then((response) {
+          // Anything other than a 200 response is invalid and will throw
+          _handlePostErrorResponse(
+              response.statusCode,
+              response.reasonPhrase,
+              response.headers,
+              response.body);
+          // Extract the json data from the response
+          var parameters = _parseJsonResponse(
+              response.headers,
+              response.body);
+
+          return _extractCredentials(requestTimeStamp, parameters, state);
+        });
+  }
+
+
+  OAuth2Credentials _extractCredentials(DateTime requestTimeStamp, LinkedHashMap<String, dynamic> parameters, String state) {
     // token_type parameter isn't implemented in some major auth providers
     // (instagram for one)
     //var requiredParams = ['access_token', 'token_type'];
@@ -183,6 +278,9 @@ class OAuth2 {
     if(parameters.containsKey('scope')) {
       scopes = parameters['scope'].split(' ');
     }
+    if(scopes == null) {
+      scopes = this._scopes;
+    }
 
     // Figure out the expiration time (if applicable)
     DateTime expiration = null;
@@ -199,7 +297,9 @@ class OAuth2 {
         refreshToken,
         this._tokenEndpoint,
         scopes,
-        expiration);
+        expiration,
+        state,
+        parameters);
   }
 
   void _checkForResponseError(Map<String, String> params) {

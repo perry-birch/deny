@@ -6,13 +6,17 @@ var secret = '959e56f69e304faaa3179fe60f6c74ed';
 var redirectPath = 'http://localhost:8080/oauth2';
 var redirectUrl = new Uri(redirectPath);
 var defaultScopes = ['basic', 'comments'];
+var accessType = 'online';
+var approvalPrompt = 'force';
 
 dynamic getAuth() {
   var deny_localhost8080 = Instagram.using(
       identifier,
       secret,
       redirectUrl,
-      defaultScopes
+      defaultScopes,
+      accessType: accessType,
+      approvalPrompt: approvalPrompt
     );
   return deny_localhost8080;
 }
@@ -30,8 +34,8 @@ oauth2_tests() {
       // Assert
       expect(authUrl.toString(),
           'https://api.instagram.com/oauth/authorize/?'
-          '&access_type=online&'
-          'approval_prompt=auto&'
+          '&access_type=${accessType}&'
+          'approval_prompt=${approvalPrompt}&'
           'response_type=code&'
           'client_id=${identifier}&'
           'redirect_uri=http%3A%2F%2Flocalhost%3A8080%2Foauth2&'
@@ -50,13 +54,15 @@ oauth2_tests() {
       // Assert
       expect(authUrl.toString(),
           'https://api.instagram.com/oauth/authorize/?'
-          '&access_type=online&'
-          'approval_prompt=auto&'
+          '&access_type=${accessType}&'
+          'approval_prompt=${approvalPrompt}&'
           'response_type=code&'
           'client_id=${identifier}&'
           'redirect_uri=http%3A%2F%2Flocalhost%3A8080%2Foauth2&'
           'scope=${defaultScopes.join('+')}&'
           'state=${state}');
     });
+
+    //http://localhost:8080/oauth2?code=125535f857634bfb8cb6e17a12edbfa9&state=2103
   });
 }

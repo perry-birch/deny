@@ -37,6 +37,12 @@ class OAuth2Credentials {
   /// few seconds earlier than the server's idea of the expiration date.
   final DateTime expiration;
 
+  /// A copy of the state data from the query string (if available)
+  final String state;
+
+  /// A listing of all parameters from the auth source
+  final Map<String, dynamic> parameterData;
+
   /// Whether or not these credentials have expired. Note that it's possible the
   /// credentials will expire shortly after this is called. However, since the
   /// client's expiration date is kept a few seconds earlier than the server's,
@@ -52,7 +58,9 @@ class OAuth2Credentials {
       [this.refreshToken,
       this.tokenEndpoint,
       this.scopes,
-      this.expiration]);
+      this.expiration,
+      this.state,
+      this.parameterData]);
 
 /// Serializes a set of credentials to JSON. Nothing is guaranteed about the
   /// output except that it's valid JSON and compatible with
@@ -62,7 +70,9 @@ class OAuth2Credentials {
     'refreshToken': refreshToken,
     'tokenEndpoint': tokenEndpoint == null ? null : tokenEndpoint.toString(),
     'scopes': scopes,
-    'expiration': expiration == null ? null : expiration.millisecondsSinceEpoch
+    'expiration': expiration == null ? null : expiration.millisecondsSinceEpoch,
+    'state': state,
+    'parameterData': parameterData
   });
 
   /// Creates a new set of credentials using the supplied parameters
@@ -71,13 +81,17 @@ class OAuth2Credentials {
       [String refreshToken,
        Uri tokenEndpoint,
        List<String> scopes,
-       DateTime expiration]) {
+       DateTime expiration,
+       String state,
+       Map<String, dynamic> parameterData]) {
     return new OAuth2Credentials._(
         accessToken,
         refreshToken,
         tokenEndpoint,
         scopes,
-        expiration);
+        expiration,
+        state,
+        parameterData);
   };
 
   static final dynamic fromJSON = (String json) {
@@ -113,14 +127,15 @@ class OAuth2Credentials {
 
     var refreshToken = parsed['refreshToken'];
 
-    var scopes = parsed['scopes'];
-    validate(scopes == null || scopes is List,
-        'field "scopes" was not a list, was "$scopes"');
-
     var tokenEndpoint = parsed['tokenEndpoint'];
     if (tokenEndpoint != null) {
       tokenEndpoint = Uri.parse(tokenEndpoint);
     }
+
+    var scopes = parsed['scopes'];
+    validate(scopes == null || scopes is List,
+        'field "scopes" was not a list, was "$scopes"');
+
     var expiration = parsed['expiration'];
     if (expiration != null) {
       validate(expiration is int,
@@ -128,11 +143,16 @@ class OAuth2Credentials {
       expiration = new DateTime.fromMillisecondsSinceEpoch(expiration);
     }
 
+    var state = parsed['state'];
+    var parameterData = parsed['parameterData'];
+
     return using(
         accessToken,
         refreshToken,
         tokenEndpoint,
         scopes,
-        expiration);
+        expiration,
+        state,
+        parameterData);
   };
 }
