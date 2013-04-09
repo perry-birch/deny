@@ -85,7 +85,7 @@ Getting started is really easy *(I sincerly hope!)*:
 Version
 ----
 
-0.0.8 ish
+0.0.9 ish
 
 Tech
 ----
@@ -106,7 +106,7 @@ https://github.com/Vizidrix/deny/blob/master/LICENSE
 ----
 ## Edited
 * 08-April-2013 initial release
-* 09-April-2013 added credits for the OAuth2 guys
+* 09-April-2013 added credits for the OAuth2 guys and updated example
 
 ----
 ## Credits
