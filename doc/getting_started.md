@@ -104,7 +104,7 @@ https://github.com/Vizidrix/deny/blob/master/LICENSE
 
 ----
 ## Edited
-* 04-April-2013 initial release
+* 08-April-2013 initial release
 
 ----
 ## Credits
