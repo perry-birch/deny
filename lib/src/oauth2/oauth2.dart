@@ -8,9 +8,13 @@ import 'dart:uri';
 
 import 'package:http/http.dart' as http;
 
-import 'authorization_exception.dart';
-import 'oauth2_credentials.dart';
-import 'query_string.dart';
+import '../query_string.dart';
+
+part 'oauth2_credentials.dart';
+part 'authorization_exception.dart';
+part 'expiration_exception.dart';
+part 'authenticate_header.dart';
+
 
 class OAuth2 {
   /// The amount of time, in seconds, to add as a "grace period" for credential
@@ -122,7 +126,7 @@ class OAuth2 {
     if (!params.containsKey('error')) return response;
 
     throw new AuthorizationException(
-        params['error'], params['error_description'], params['error_uri']);
+        params['error'], params['error_description'], new Uri.fromString(params['error_uri']));
   };
 
   /// Returns the URL to which the resource owner should be redirected to
@@ -171,7 +175,8 @@ class OAuth2 {
     return data;
   }
 
-  Map<String, String> getTokenRefreshData(String refreshToken, [List<String> scopes = []]) {
+  Map<String, String> getTokenRefreshData(String refreshToken, [List<String> scopes]) {
+    if(scopes == null) { scopes = []; }
     var data = {
       "grant_type": "authorization_code",
       "refresh_token": refreshToken,
@@ -198,6 +203,13 @@ class OAuth2 {
     var requestTimeStamp = new DateTime.now();
     // Trigger post to auth server to get token
     return _postToTokenEndpoint(client, requestTimeStamp, data, state);
+  }
+
+  /// Returns a [Future] that asynchronously completes to `null`.
+  Future get async {
+    return new Future.delayed(
+        const Duration(milliseconds: 0),
+        () => null);
   }
 
   /// Explicitly refreshes this client's credentials. Returns this client.

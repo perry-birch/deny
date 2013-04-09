@@ -52,22 +52,22 @@ Getting started is really easy *(I sincerly hope!)*:
 
 >Grab an API proxy to make your life oh so much easier
 
-        var instagram = Instagram.using(client, credentials);
+        var instagramApi = InstagramApi(client, credentials);
 
 >Then, start casting about for some intersting JSON!
 
         var futures = [ 
-          instagram.getCurrentUser().then((userData) {
+          instagramApi.currentUser.getProfile().then((userData) {
             response
             ..write('\r\n\r\n')
             ..write(JSON.stringify(userData));
           }),
-          instagram.getCurrentUserFeed(count: 3).then((userFeed) {
+          instagramApi.currentUser.getFeed(count: 3).then((userFeed) {
             response
             ..write('\r\n\r\n')
             ..write(userFeed);
           }),
-          instagram.getSearch('luigi').then((results) {
+          instagramApi.search('luigi').then((results) {
             response
             ..write('\r\n\r\n')
             ..write(results);
@@ -105,8 +105,13 @@ https://github.com/Vizidrix/deny/blob/master/LICENSE
 ----
 ## Edited
 * 08-April-2013 initial release
+* 09-April-2013 added credits for the OAuth2 guys
 
 ----
 ## Credits
-* [Vizidrix](https://github.com/organizations/Vizidrix)
-* [Perry Birch](https://github.com/PerryBirch)
+* Vizidrix <https://github.com/organizations/Vizidrix>
+* Perry Birch <https://github.com/PerryBirch>
+* Nathan Weizenbaum <nex342@gmail.com>
+* Dan Grove <dgrove@google.com>
+* John Messerly <jmesserly@google.com>
+* Sigmund Cherem <sigmund@google.com>

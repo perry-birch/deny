@@ -1,7 +1,4 @@
-library oauth_credentials;
-
-import 'dart:json' as JSON;
-import 'dart:uri';
+part of oauth2;
 
 /// Credentials that prove that a client is allowed to access a resource on the
 /// resource owner's behalf. These credentials are long-lasting and can be

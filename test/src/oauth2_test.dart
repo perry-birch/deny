@@ -4,13 +4,13 @@ part of deny_test;
 var identifier = '0993c79437a74c36b7cb6ba9e10a37a6';
 var secret = '959e56f69e304faaa3179fe60f6c74ed';
 var redirectPath = 'http://localhost:8080/oauth2';
-var redirectUrl = new Uri(redirectPath);
+var redirectUrl = new Uri.fromString(redirectPath);
 var defaultScopes = ['basic', 'comments'];
 var accessType = 'online';
 var approvalPrompt = 'force';
 
 dynamic getAuth() {
-  var deny_localhost8080 = Instagram.authorizeUsing(
+  var deny_localhost8080 = InstagramApi.authorizeUsing(
       identifier,
       secret,
       redirectUrl,

@@ -7,8 +7,11 @@ import 'package:http/http.dart' as http;
 
 import 'package:deny/deny.dart';
 
-//http://instagram.com/developer/endpoints/relationships/
-class Instagram {
+part 'instagram_user.dart';
+part 'instagram_authenticated_user.dart';
+
+//http://instagram.com/developer/endpoints/
+class InstagramApi {
   static final Uri _AUTHORIZATION_ENDPOINT = new Uri('https://api.instagram.com/oauth/authorize/');
   static final Uri _TOKEN_ENDPOINT = new Uri('https://api.instagram.com/oauth/access_token');
 
@@ -17,21 +20,33 @@ class Instagram {
   final http.Client _client;
   final OAuth2Credentials _credentials;
 
-  Instagram._(
+  InstagramApi._(
       this._client,
       this._credentials);
 
-  static final dynamic using = (
+  factory InstagramApi(
       http.Client client,
       OAuth2Credentials credentials) {
-    return new Instagram._(client, credentials);
-  };
+    return new InstagramApi._(client, credentials);
+  }
+
+  http.Client get client => _client;
+  OAuth2Credentials get credentials => _credentials;
+
+  InstagramAuthenticatedUser _currentUser;
+  InstagramAuthenticatedUser get currentUser {
+    if(_currentUser == null) {
+      var userId = _credentials.parameterData['user']['id'];
+      _currentUser = new InstagramUser(this, userId);
+    }
+    return _currentUser;
+  }
 
   static final dynamic authorizeUsing = (
       String identifier,
       String secret,
       Uri redirectEndpoint,
-      List<String> scopes,
+      List<String> scopes, // [ basic, likes | relationships | comments ]
       {
         String accessType: 'online',
         String approvalPrompt: 'force'
@@ -48,7 +63,7 @@ class Instagram {
     );
   };
 
-  dynamic _callApi(String path, [Map<String, String> parameters]) {
+  dynamic get(String path, [Map<String, String> parameters]) {
     var queryString = '';
     if(parameters != null) {
       parameters.forEach((key, value) {
@@ -65,51 +80,16 @@ class Instagram {
     });
   }
 
-  dynamic getCurrentUser() {
-    var userId = _credentials.parameterData['user']['id'];
-    return getUser(userId);
-  }
-
-  dynamic getCurrentUserFeed({int count, int minId, int maxId}) {
-    Map<String, String> params = new Map<String, String>();
-    if(count != null) { params['count'] = count.toString(); }
-    if(minId != null) { params['min_id'] = minId.toString(); }
-    if(maxId != null) { params['max_id'] = maxId.toString(); }
-
-    return _callApi('/users/self/feed', params);
-  }
-
-  dynamic getCurrentUserMediaLiked({int count, int maxLikeId}) {
-    Map<String, String> params = new Map<String, String>();
-    if(count != null) { params['count'] = count.toString(); }
-    if(maxLikeId != null) { params['max_like_id'] = maxLikeId.toString(); }
-
-    return _callApi('/users/self/media/liked');
-  }
-
-  dynamic getUser(String userId) {
-    return _callApi('/users/${userId}');
-  }
-
-  dynamic getMediaRecent(String userId, {int count, int minId, int maxId, int minTimestamp, int maxTimestamp}) {
-    Map<String, String> params = new Map<String, String>();
-    if(count != null) { params['count'] = count.toString(); }
-    if(minId != null) { params['min_id'] = minId.toString(); }
-    if(maxId != null) { params['max_id'] = maxId.toString(); }
-    if(minTimestamp != null) { params['min_timestamp'] = maxId.toString(); }
-    if(maxTimestamp != null) { params['max_timestamp'] = minId.toString(); }
-
-    return _callApi('/users/${userId}/media/recent', params);
-  }
-
-  dynamic getSearch(String q, {int count}) {
+  dynamic search(String q, {int count}) {
     Map<String, String> params = new Map<String, String>();
     if(q != null) { params['q'] = q; }
     if(count != null) { params['count'] = count.toString(); }
 
-    return _callApi('/users/search', params);
+    return get('/users/search', params);
   }
 
+
+// var userId = _credentials.parameterData['user']['id'];
 // Sample data structure returned from initial auth request
 //{
 //  "accessToken":"346114496.c023236.fa207142712a468e9ceb9e72a8a15087",
