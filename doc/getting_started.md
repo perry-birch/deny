@@ -15,7 +15,7 @@ Getting started is really easy *(I sincerly hope!)*:
 
 >Grab something to help you with the auth:
 
-    var auth = Instagram.authorizeUsing(
+    var auth = InstagramApi.authorizeUsing(
       '0993c79435a74c36b7cb6ba9e10a37a6', // CLIENT_ID
       '959e56f63e304faaa3179fe60f6c74ed', // CLIENT_SECRET
       new Uri('http://yourawesomesite.heroku.com/oauth2'),
@@ -43,7 +43,8 @@ Getting started is really easy *(I sincerly hope!)*:
 
     oauth2(HttpRequest request) {
       var client = new http.Client();
-      var handler = auth.handleTokenResponse(client, request.queryParameters);
+      var handler = auth.handleTokenResponse(
+      	client, request.queryParameters); <-- up to 9 lines
       handler.then((credentials) { 
         var response = request.response; 
         response
