@@ -1,5 +1,5 @@
 name: deny
-version: 0.0.9
+version: 0.0.10
 author: Vizidrix <admin@vizidrix.com>
 description: A suite of authentication related utilities.
 homepage: https://github.com/Vizidrix/deny
