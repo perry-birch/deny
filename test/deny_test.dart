@@ -6,9 +6,9 @@ import 'package:unittest/unittest.dart';
 import 'package:deny/deny.dart';
 
 // Unit tests
-part 'src/oauth2_credentials_test.dart';
-part 'src/oauth2_test.dart';
-part 'src/query_string_test.dart';
+import 'src/oauth2_credentials_test.dart';
+import 'src/oauth2_test.dart';
+import 'src/query_string_test.dart';
 
 void main() {
   query_string_tests();

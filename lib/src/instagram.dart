@@ -7,8 +7,8 @@ import 'package:http/http.dart' as http;
 
 import 'package:deny/deny.dart';
 
-part 'instagram_user.dart';
-part 'instagram_authenticated_user.dart';
+part 'instagram/instagram_user.dart';
+part 'instagram/instagram_authenticated_user.dart';
 
 //http://instagram.com/developer/endpoints/
 class InstagramApi {

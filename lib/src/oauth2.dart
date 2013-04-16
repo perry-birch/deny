@@ -8,12 +8,12 @@ import 'dart:uri';
 
 import 'package:http/http.dart' as http;
 
-import '../query_string.dart';
+import 'query_string.dart';
 
-part 'oauth2_credentials.dart';
-part 'authorization_exception.dart';
-part 'expiration_exception.dart';
-part 'authenticate_header.dart';
+part 'oauth2/oauth2_credentials.dart';
+part 'oauth2/authorization_exception.dart';
+part 'oauth2/expiration_exception.dart';
+part 'oauth2/authenticate_header.dart';
 
 
 class OAuth2 {
@@ -399,6 +399,5 @@ class OAuth2 {
 
   Iterable intersection(Iterable left, Iterable right) {
     return left.map((l) => right.contains(l));
-
   }
 }

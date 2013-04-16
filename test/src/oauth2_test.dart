@@ -1,4 +1,6 @@
-part of deny_test;
+import 'package:unittest/unittest.dart';
+import 'package:deny/deny.dart';
+import 'dart:uri';
 
 // These properties can/should be stored in a config for real apps
 var identifier = '0993c79437a74c36b7cb6ba9e10a37a6';

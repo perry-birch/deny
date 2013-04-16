@@ -1,7 +1,10 @@
-part of deny_test;
+import 'package:unittest/unittest.dart';
+import 'package:deny/deny.dart';
+import 'dart:uri';
 
 oauth2_credentials_tests() {
   group('-oauth2_credentials- should', () {
+
     test('capture correct field data', () {
       // Arrange
       var accessToken = 'accessToken';
